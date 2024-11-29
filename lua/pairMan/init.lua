@@ -188,8 +188,21 @@ function m.PairInserter(chars, motion, backwards)
     end
 
     local charUnderCursor = vim.fn.strpart(vim.fn.getline("."), vim.fn.col(".") - 1, 1)
+
+    if charUnderCursor == '"' or charUnderCursor == "'" then
+        charUnderCursor = "\\"..charUnderCursor;
+    end
+
+    ---@nodocs docs{{{
+    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
+    --- `\"`
+    --- each `\` needs to be doubled. because it's value gets passed to a string.
+    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
+    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
+    ---@nodocs docs}}}
+    local regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..charUnderCursor
+
     local firstChars, lastChars  = returnMatchPairs()
-    local regex = "\\%(\\\\\\)\\@<!"..charUnderCursor.."<CR>"
 
     simkeys("v<ESC>")
     if motion == "a" then
@@ -198,12 +211,12 @@ function m.PairInserter(chars, motion, backwards)
         elseif vim.list_contains(lastChars, charUnderCursor) then
             simkeys("%i"..chars[1].."<ESC>gvl<ESC>a"..chars[2])
         else
-            if vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys("/"..regex.."a"..chars[2].."<ESC>gv<ESC>i"..chars[1])
-            elseif vim.list_contains(lastChars, chars[1]) then
-                simkeys("?"..regex.."i"..chars[2].."<ESC>gv<ESC>la"..chars[1])
+            if vim.list_contains(lastChars, chars[1]) then
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>i"..chars[2].."<ESC>gv<ESC>la"..chars[1])
+            elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
+                simkeys(":lua vim.fn.search('"..regex.."')<CR>a"..chars[2].."<ESC>gv<ESC>i"..chars[1])
             else
-                simkeys("?"..regex.."i"..chars[1].."<ESC>gv<ESC>la"..chars[2])
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>i"..chars[1].."<ESC>gv<ESC>la"..chars[2])
             end
         end
     else
@@ -212,16 +225,16 @@ function m.PairInserter(chars, motion, backwards)
         elseif vim.list_contains(lastChars, charUnderCursor) then
             simkeys("%a"..chars[1].."<ESC>gvl<ESC>i"..chars[2])
         else
-            if vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys("/"..regex.."i"..chars[2].."<ESC>gv<ESC>a"..chars[1])
-            elseif vim.list_contains(lastChars, chars[1]) then
-                simkeys("?"..regex.."a"..chars[2].."<ESC>gv<ESC>li"..chars[1])
+            if vim.list_contains(lastChars, chars[1]) then
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>a"..chars[2].."<ESC>gv<ESC>li"..chars[1])
+            elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
+                simkeys(":lua vim.fn.search('"..regex.."')<CR>i"..chars[2].."<ESC>gv<ESC>a"..chars[1])
             else
-                simkeys("?"..regex.."a"..chars[1].."<ESC>gv<ESC>li"..chars[2])
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>a"..chars[1].."<ESC>gv<ESC>li"..chars[2])
             end
         end
     end
-    simkeys("<ESC>:let @/ = ''<CR>")
+    simkeys("<ESC>")
 end -- }}}1
 
 ---@nodoc setup() {{{
