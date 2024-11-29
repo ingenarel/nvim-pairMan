@@ -86,11 +86,13 @@ function m.PairChanger(chars, backwards)
 
     local firstChars, lastChars = returnMatchPairs()
 
+    ---@nodocs docs{{{
     --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
     --- `\"`
     --- each `\` needs to be doubled. because it's value gets passed to a string.
     --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
     --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
+    ---@nodocs docs}}}
     local regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..charUnderCursor
 
     if chars[1] ~= nil and chars[2] == nil then
@@ -117,9 +119,9 @@ function m.PairChanger(chars, backwards)
             end
         else
             if backwards == false then
-                simkeys(":lua vim.fn.search('"..regex.."', 'W')<CR>xgv<ESC>x")
+                simkeys(":lua vim.fn.search('"..regex.."')<CR>xgv<ESC>x")
             else
-                simkeys(":lua vim.fn.search('"..regex.."', 'Wb')<CR>xgv<ESC>")
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>xgv<ESC>")
                 if vim.fn.col(".") ==  vim.fn.col("$") - 1 or afterSwitchLine ~= vim.fn.getline(".") then
                     simkeys("x")
                 else
@@ -134,11 +136,11 @@ function m.PairChanger(chars, backwards)
             simkeys("%r"..chars[1].."gv<ESC>".."r"..chars[2])
         else
             if vim.list_contains(lastChars, chars[1]) then
-                simkeys(":lua vim.fn.search('"..regex.."', 'Wb')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
             elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys(":lua vim.fn.search('"..regex.."', 'W')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
+                simkeys(":lua vim.fn.search('"..regex.."')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
             else
-                simkeys(":lua vim.fn.search('"..regex.."', 'Wb')<CR>r"..chars[1].."gv<ESC>r"..chars[2])
+                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>r"..chars[1].."gv<ESC>r"..chars[2])
             end
         end
     end
