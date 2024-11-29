@@ -80,8 +80,18 @@ function m.PairChanger(chars, backwards)
     end
 
     local charUnderCursor = vim.fn.strpart(vim.fn.getline("."), vim.fn.col(".") - 1, 1)
-    local firstChars, lastChars  = returnMatchPairs()
-    local regex = "\\%(\\\\\\)\\@<!"..charUnderCursor.."<CR>"
+    if charUnderCursor == '"' or charUnderCursor == "'" then
+        charUnderCursor = "\\"..charUnderCursor;
+    end
+
+    local firstChars, lastChars = returnMatchPairs()
+
+    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
+    --- `\"`
+    --- each `\` needs to be doubled. because it's value gets passed to a string.
+    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
+    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
+    local regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..charUnderCursor
 
     if chars[1] ~= nil and chars[2] == nil then
         chars[2] = chars[1]
@@ -107,9 +117,9 @@ function m.PairChanger(chars, backwards)
             end
         else
             if backwards == false then
-                simkeys("/"..regex.."xgv<ESC>x")
+                simkeys(":lua vim.fn.search('"..regex.."', 'W')<CR>xgv<ESC>x")
             else
-                simkeys("?"..regex.."xgv<ESC>")
+                simkeys(":lua vim.fn.search('"..regex.."', 'Wb')<CR>xgv<ESC>")
                 if vim.fn.col(".") ==  vim.fn.col("$") - 1 or afterSwitchLine ~= vim.fn.getline(".") then
                     simkeys("x")
                 else
@@ -123,16 +133,15 @@ function m.PairChanger(chars, backwards)
         elseif vim.list_contains(lastChars, charUnderCursor) then
             simkeys("%r"..chars[1].."gv<ESC>".."r"..chars[2])
         else
-            if vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys("/"..regex.."r"..chars[2].."gv<ESC>r"..chars[1])
-            elseif vim.list_contains(lastChars, chars[1]) then
-                simkeys("?"..regex.."r"..chars[2].."gv<ESC>r"..chars[1])
+            if vim.list_contains(lastChars, chars[1]) then
+                simkeys(":lua vim.fn.search('"..regex.."', 'Wb')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
+            elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
+                simkeys(":lua vim.fn.search('"..regex.."', 'W')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
             else
-                simkeys("?"..regex.."r"..chars[1].."gv<ESC>r"..chars[2])
+                simkeys(":lua vim.fn.search('"..regex.."', 'Wb')<CR>r"..chars[1].."gv<ESC>r"..chars[2])
             end
         end
     end
-    simkeys(":let @/ = ''<CR>")
 end -- }}}
 
 ---@nodoc PairInserter() {{{
@@ -264,7 +273,7 @@ function m.setup(opts)
             )
 
             vim.keymap.set("n", opts.changerKeymap..lastChars[i],
-                function() m.PairChanger{lastChars[i], lastChars[i]} end,
+                function() m.PairChanger({lastChars[i], firstChars[i]}) end,
                 {desc="Change pair to "..firstChars[i]..lastChars[i].." if on last qoute", buffer=bufvalue}
             )
 
