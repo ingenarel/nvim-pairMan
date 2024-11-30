@@ -41,12 +41,66 @@ local function returnMatchPairs(global)
     return firstChars, lastChars
 end --}}}
 
+---@nodocs local initPairManupulation(){{{
+---@nodocs docs{{{
+---### this the the initialization function of the variables for pair manupulation.
+---this should be called internally in PairChanger() and in PairInserter() at the start.
+---@param chars? [string, string] see m._chars for more info.
+---@param backwards boolean? see m._backwards for more info.
+---@nodocs docs}}}
+local function initPairManupulation(chars, backwards)
+
+    ---@nodoc TODO: somehow fix the docstrings when using a `,`
+    m._firstChars, m._lastChars = returnMatchPairs();
+
+    ---@nodocs docs{{{
+    ---### this is a shared value to make debugging easier, and the init for each function short.
+    ---@type char the current char under the cursor when the last function was called.
+    ---@nodocs docs}}}
+    m._charUnderCursor = vim.fn.strpart(vim.fn.getline("."), vim.fn.col(".") - 1, 1)
+    if m._charUnderCursor == '"' or m._charUnderCursor == "'" then
+        m._charUnderCursor = "\\"..m._charUnderCursor;
+    end
+
+    ---@nodocs docs{{{
+    ---### this is a shared value to make debugging easier, and the init for each function short.
+    ---@type [string, string]? the char list that was passed to the last function call. either both elements could be
+    ---nil, or both elements could be a string. if the second one is nil, and not the first one, then the first one's
+    ---value is copied to the second one's value.
+    ---see |PairChanger|'s or |PairInserter|'s documentation for more info about chars.
+    ---@nodocs docs}}}
+    m._chars = chars;
+    if (m._chars == nil) then m._chars = {} end
+    if (m._chars[1] ~= nil and m._chars[2] == nil) then m._chars[2] = m._chars[1] end
+
+    ---@nodocs docs{{{
+    ---### this is a shared value to make debugging easier, and the init for each function short.
+    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
+    --- `\"`
+    --- each `\` needs to be doubled. because it's value gets passed to a string.
+    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
+    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
+        ---@nodocs docs}}}
+    m._regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..m._charUnderCursor
+
+    ---@nodocs docs{{{
+    ---### this is a shared value to make debugging easier, and the init for each function short.
+    ---@type boolean? this is the backwards value that was passed to the last function call.
+    ---see |PairChanger|'s or |PairInserter|'s documentation for more info about backwards.
+    ---@nodocs docs}}}
+    m._backwards = backwards;
+
+    if (m._backwards == nil) then m._backwards = false end
+
+    simkeys("v<ESC>")
+end-- }}}
+
 ---@nodoc PairChanger() {{{
 ---@nodoc docs {{{
 ---### function for pair manupulation.
 ---it can work with the matchpairs option, and it can also work with qoutes using regexes
 ------
----@param chars? [string?, string?] should be a pair of chars that you want to set the current pair to.
+---@param chars? [string, string] should be a pair of chars that you want to set the current pair to.
 ---eg: if you want to change [] to (), you would call this while you're on top the pair:
 ---```lua
 ---require("pairMan").PairChanger{"(", ")"}
@@ -74,43 +128,14 @@ end --}}}
 ---```
 ---@nodoc docs }}}
 function m.PairChanger(chars, backwards)
-
-    if chars == nil then
-        chars = {}
-    end
-
-    local charUnderCursor = vim.fn.strpart(vim.fn.getline("."), vim.fn.col(".") - 1, 1)
-    if charUnderCursor == '"' or charUnderCursor == "'" then
-        charUnderCursor = "\\"..charUnderCursor;
-    end
-
-    local firstChars, lastChars = returnMatchPairs()
-
-    ---@nodocs docs{{{
-    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
-    --- `\"`
-    --- each `\` needs to be doubled. because it's value gets passed to a string.
-    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
-    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
-    ---@nodocs docs}}}
-    local regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..charUnderCursor
-
-    if chars[1] ~= nil and chars[2] == nil then
-        chars[2] = chars[1]
-    end
-
-    if backwards == nil then
-        backwards = false
-    end
-
-    simkeys("v<ESC>")
+    initPairManupulation(chars, backwards);
 
     local afterSwitchLine = vim.fn.getline(".");
 
-    if chars[1] == nil then
-        if vim.list_contains(firstChars, charUnderCursor) then
+    if m._chars[1] == nil then
+        if vim.list_contains(m._firstChars, m._charUnderCursor) then
             simkeys("%xgv<ESC>x")
-        elseif vim.list_contains(lastChars, charUnderCursor) then
+        elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
             simkeys("%xgv<ESC>")
             if vim.fn.col(".") ==  vim.fn.col("$") - 1 then
                 simkeys("x")
@@ -118,10 +143,10 @@ function m.PairChanger(chars, backwards)
                 simkeys("hx")
             end
         else
-            if backwards == false then
-                simkeys(":lua vim.fn.search('"..regex.."')<CR>xgv<ESC>x")
+            if m._backwards == false then
+                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>xgv<ESC>x")
             else
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>xgv<ESC>")
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>xgv<ESC>")
                 if vim.fn.col(".") ==  vim.fn.col("$") - 1 or afterSwitchLine ~= vim.fn.getline(".") then
                     simkeys("x")
                 else
@@ -130,17 +155,17 @@ function m.PairChanger(chars, backwards)
             end
         end
     else
-        if vim.list_contains(firstChars, charUnderCursor) then
-            simkeys("%r"..chars[2].."gv<ESC>".."r"..chars[1])
-        elseif vim.list_contains(lastChars, charUnderCursor) then
-            simkeys("%r"..chars[1].."gv<ESC>".."r"..chars[2])
+        if vim.list_contains(m._firstChars, m._charUnderCursor) then
+            simkeys("%r"..m._chars[2].."gv<ESC>".."r"..m._chars[1])
+        elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
+            simkeys("%r"..m._chars[1].."gv<ESC>".."r"..m._chars[2])
         else
-            if vim.list_contains(lastChars, chars[1]) then
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
-            elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys(":lua vim.fn.search('"..regex.."')<CR>r"..chars[2].."gv<ESC>r"..chars[1])
+            if vim.list_contains(m._lastChars, m._chars[1]) then
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>r"..m._chars[2].."gv<ESC>r"..m._chars[1])
+            elseif vim.list_contains(m._firstChars, m._chars[1]) or m._backwards == false then
+                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>r"..m._chars[2].."gv<ESC>r"..m._chars[1])
             else
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>r"..chars[1].."gv<ESC>r"..chars[2])
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>r"..m._chars[1].."gv<ESC>r"..m._chars[2])
             end
         end
     end
@@ -151,7 +176,7 @@ end -- }}}
 ---### function for pair insertion.
 ---it can work with the matchpairs option, and it can also work with qoutes using regexes
 ---
----@param chars [string?, string?] should be a pair of chars that you want to insert inside/outside the current pair.
+---@param chars? [string, string] should be a pair of chars that you want to insert inside/outside the current pair.
 ---if firstChar == lastChar you can omit last char
 ---```lua
 ---require("pairMan").PairInserter{'"'}
@@ -178,59 +203,34 @@ end -- }}}
 ---```
 ---@nodoc }}}2
 function m.PairInserter(chars, motion, backwards)
+    initPairManupulation(chars, backwards)
 
-    if chars[1] ~= nil and chars[2] == nil then
-        chars[2] = chars[1]
-    end
-
-    if backwards == nil then
-        backwards = false
-    end
-
-    local charUnderCursor = vim.fn.strpart(vim.fn.getline("."), vim.fn.col(".") - 1, 1)
-
-    if charUnderCursor == '"' or charUnderCursor == "'" then
-        charUnderCursor = "\\"..charUnderCursor;
-    end
-
-    ---@nodocs docs{{{
-    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
-    --- `\"`
-    --- each `\` needs to be doubled. because it's value gets passed to a string.
-    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
-    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
-    ---@nodocs docs}}}
-    local regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..charUnderCursor
-
-    local firstChars, lastChars  = returnMatchPairs()
-
-    simkeys("v<ESC>")
     if motion == "a" then
-        if vim.list_contains(firstChars, charUnderCursor) then
-            simkeys("%a"..chars[2].."<ESC>gv<ESC>i"..chars[1])
-        elseif vim.list_contains(lastChars, charUnderCursor) then
-            simkeys("%i"..chars[1].."<ESC>gvl<ESC>a"..chars[2])
+        if vim.list_contains(m._firstChars, m._charUnderCursor) then
+            simkeys("%a"..m._chars[2].."<ESC>gv<ESC>i"..m._chars[1])
+        elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
+            simkeys("%i"..m._chars[1].."<ESC>gvl<ESC>a"..m._chars[2])
         else
-            if vim.list_contains(lastChars, chars[1]) then
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>i"..chars[2].."<ESC>gv<ESC>la"..chars[1])
-            elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys(":lua vim.fn.search('"..regex.."')<CR>a"..chars[2].."<ESC>gv<ESC>i"..chars[1])
+            if vim.list_contains(m._lastChars, m._chars[1]) then
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>i"..m._chars[2].."<ESC>gv<ESC>la"..m._chars[1])
+            elseif vim.list_contains(m._firstChars, m._chars[1]) or m._backwards == false then
+                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>a"..m._chars[2].."<ESC>gv<ESC>i"..m._chars[1])
             else
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>i"..chars[1].."<ESC>gv<ESC>la"..chars[2])
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>i"..m._chars[1].."<ESC>gv<ESC>la"..m._chars[2])
             end
         end
     else
-        if vim.list_contains(firstChars, charUnderCursor) then
-            simkeys("%i"..chars[2].."<ESC>gv<ESC>a"..chars[1])
-        elseif vim.list_contains(lastChars, charUnderCursor) then
-            simkeys("%a"..chars[1].."<ESC>gvl<ESC>i"..chars[2])
+        if vim.list_contains(m._firstChars, m._charUnderCursor) then
+            simkeys("%i"..m._chars[2].."<ESC>gv<ESC>a"..m._chars[1])
+        elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
+            simkeys("%a"..m._chars[1].."<ESC>gvl<ESC>i"..m._chars[2])
         else
-            if vim.list_contains(lastChars, chars[1]) then
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>a"..chars[2].."<ESC>gv<ESC>li"..chars[1])
-            elseif vim.list_contains(firstChars, chars[1]) or backwards == false then
-                simkeys(":lua vim.fn.search('"..regex.."')<CR>i"..chars[2].."<ESC>gv<ESC>a"..chars[1])
+            if vim.list_contains(m._lastChars, m._chars[1]) then
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>a"..m._chars[2].."<ESC>gv<ESC>li"..m._chars[1])
+            elseif vim.list_contains(m._firstChars, m._chars[1]) or m._backwards == false then
+                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>i"..m._chars[2].."<ESC>gv<ESC>a"..m._chars[1])
             else
-                simkeys(":lua vim.fn.search('"..regex.."', 'b')<CR>a"..chars[1].."<ESC>gv<ESC>li"..chars[2])
+                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>a"..m._chars[1].."<ESC>gv<ESC>li"..m._chars[2])
             end
         end
     end
