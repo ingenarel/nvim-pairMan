@@ -1,5 +1,14 @@
 Ever wanted to change your () to {} or put a [] inside it without typing too much? This plugin does exactly that.
 
+It can work with any type of pairs, non matching ones, and matching ones, and it works with `vim.opt.matchpairs` too.
+
+It can:
+- delete pairs
+- change pairs
+- put stuff inside / outside of pairs
+
+And it does all of that by simulating keystrokes, the normal vim commands. So no need for additional dependencies like treesitter 
+
 ## This help page, the readme, and the lua docstrings in the plugin files might not be in sync.
 
 I'll try to figure out a way to make them generate from the lua docstrings. Until then if you have a lua lsp (i use
