@@ -49,9 +49,8 @@ end --}}}
 ---@param backwards boolean? see m._backwards for more info.
 ---@nodocs docs}}}
 local function initPairManupulation(chars, backwards)
-
     ---@nodoc TODO: somehow fix the docstrings when using a `,`
-    m._firstChars, m._lastChars = returnMatchPairs();
+    m._firstChars, m._lastChars = returnMatchPairs()
 
     ---@nodocs docs{{{
     ---### this is a shared value to make debugging easier, and the init for each function short.
@@ -59,7 +58,7 @@ local function initPairManupulation(chars, backwards)
     ---@nodocs docs}}}
     m._charUnderCursor = vim.fn.strpart(vim.fn.getline("."), vim.fn.col(".") - 1, 1)
     if m._charUnderCursor == '"' or m._charUnderCursor == "'" then
-        m._charUnderCursor = "\\"..m._charUnderCursor;
+        m._charUnderCursor = "\\" .. m._charUnderCursor
     end
 
     ---@nodocs docs{{{
@@ -69,31 +68,37 @@ local function initPairManupulation(chars, backwards)
     ---value is copied to the second one's value.
     ---see |PairChanger|'s or |PairInserter|'s documentation for more info about chars.
     ---@nodocs docs}}}
-    m._chars = chars;
-    if (m._chars == nil) then m._chars = {} end
-    if (m._chars[1] ~= nil and m._chars[2] == nil) then m._chars[2] = m._chars[1] end
+    m._chars = chars
+    if m._chars == nil then
+        m._chars = {}
+    end
+    if m._chars[1] ~= nil and m._chars[2] == nil then
+        m._chars[2] = m._chars[1]
+    end
 
     ---@nodocs docs{{{
     ---### this is a shared value to make debugging easier, and the init for each function short.
-    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
-    --- `\"`
-    --- each `\` needs to be doubled. because it's value gets passed to a string.
-    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
-    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
-        ---@nodocs docs}}}
-    m._regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!"..m._charUnderCursor
+    - -- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
+    - -- `\"`
+    - -- each `\` needs to be doubled. because it's value gets passed to a string.
+    - -- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
+    - -- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
+    ---@nodocs docs}}}
+    m._regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!" .. m._charUnderCursor
 
     ---@nodocs docs{{{
     ---### this is a shared value to make debugging easier, and the init for each function short.
     ---@type boolean? this is the backwards value that was passed to the last function call.
     ---see |PairChanger|'s or |PairInserter|'s documentation for more info about backwards.
     ---@nodocs docs}}}
-    m._backwards = backwards;
+    m._backwards = backwards
 
-    if (m._backwards == nil) then m._backwards = false end
+    if m._backwards == nil then
+        m._backwards = false
+    end
 
     simkeys("v<ESC>")
-end-- }}}
+end -- }}}
 
 ---@nodoc PairChanger() {{{
 ---@nodoc docs {{{
@@ -128,26 +133,26 @@ end-- }}}
 ---```
 ---@nodoc docs }}}
 function m.PairChanger(chars, backwards)
-    initPairManupulation(chars, backwards);
+    initPairManupulation(chars, backwards)
 
-    local afterSwitchLine = vim.fn.getline(".");
+    local afterSwitchLine = vim.fn.getline(".")
 
     if m._chars[1] == nil then
         if vim.list_contains(m._firstChars, m._charUnderCursor) then
             simkeys("%xgv<ESC>x")
         elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
             simkeys("%xgv<ESC>")
-            if vim.fn.col(".") ==  vim.fn.col("$") - 1 then
+            if vim.fn.col(".") == vim.fn.col("$") - 1 then
                 simkeys("x")
             else
                 simkeys("hx")
             end
         else
             if m._backwards == false then
-                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>xgv<ESC>x")
+                simkeys(":lua vim.fn.search('" .. m._regex .. "')<CR>xgv<ESC>x")
             else
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>xgv<ESC>")
-                if vim.fn.col(".") ==  vim.fn.col("$") - 1 or afterSwitchLine ~= vim.fn.getline(".") then
+                simkeys(":lua vim.fn.search('" .. m._regex .. "', 'b')<CR>xgv<ESC>")
+                if vim.fn.col(".") == vim.fn.col("$") - 1 or afterSwitchLine ~= vim.fn.getline(".") then
                     simkeys("x")
                 else
                     simkeys("hx")
@@ -156,16 +161,20 @@ function m.PairChanger(chars, backwards)
         end
     else
         if vim.list_contains(m._firstChars, m._charUnderCursor) then
-            simkeys("%r"..m._chars[2].."gv<ESC>".."r"..m._chars[1])
+            simkeys("%r" .. m._chars[2] .. "gv<ESC>" .. "r" .. m._chars[1])
         elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
-            simkeys("%r"..m._chars[1].."gv<ESC>".."r"..m._chars[2])
+            simkeys("%r" .. m._chars[1] .. "gv<ESC>" .. "r" .. m._chars[2])
         else
             if vim.list_contains(m._lastChars, m._chars[1]) then
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>r"..m._chars[2].."gv<ESC>r"..m._chars[1])
+                simkeys(
+                    ":lua vim.fn.search('" .. m._regex .. "', 'b')<CR>r" .. m._chars[2] .. "gv<ESC>r" .. m._chars[1]
+                )
             elseif vim.list_contains(m._firstChars, m._chars[1]) or m._backwards == false then
-                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>r"..m._chars[2].."gv<ESC>r"..m._chars[1])
+                simkeys(":lua vim.fn.search('" .. m._regex .. "')<CR>r" .. m._chars[2] .. "gv<ESC>r" .. m._chars[1])
             else
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>r"..m._chars[1].."gv<ESC>r"..m._chars[2])
+                simkeys(
+                    ":lua vim.fn.search('" .. m._regex .. "', 'b')<CR>r" .. m._chars[1] .. "gv<ESC>r" .. m._chars[2]
+                )
             end
         end
     end
@@ -207,30 +216,62 @@ function m.PairInserter(chars, motion, backwards)
 
     if motion == "a" then
         if vim.list_contains(m._firstChars, m._charUnderCursor) then
-            simkeys("%a"..m._chars[2].."<ESC>gv<ESC>i"..m._chars[1])
+            simkeys("%a" .. m._chars[2] .. "<ESC>gv<ESC>i" .. m._chars[1])
         elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
-            simkeys("%i"..m._chars[1].."<ESC>gvl<ESC>a"..m._chars[2])
+            simkeys("%i" .. m._chars[1] .. "<ESC>gvl<ESC>a" .. m._chars[2])
         else
             if vim.list_contains(m._lastChars, m._chars[1]) then
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>i"..m._chars[2].."<ESC>gv<ESC>la"..m._chars[1])
+                simkeys(
+                    ":lua vim.fn.search('"
+                        .. m._regex
+                        .. "', 'b')<CR>i"
+                        .. m._chars[2]
+                        .. "<ESC>gv<ESC>la"
+                        .. m._chars[1]
+                )
             elseif vim.list_contains(m._firstChars, m._chars[1]) or m._backwards == false then
-                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>a"..m._chars[2].."<ESC>gv<ESC>i"..m._chars[1])
+                simkeys(
+                    ":lua vim.fn.search('" .. m._regex .. "')<CR>a" .. m._chars[2] .. "<ESC>gv<ESC>i" .. m._chars[1]
+                )
             else
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>i"..m._chars[1].."<ESC>gv<ESC>la"..m._chars[2])
+                simkeys(
+                    ":lua vim.fn.search('"
+                        .. m._regex
+                        .. "', 'b')<CR>i"
+                        .. m._chars[1]
+                        .. "<ESC>gv<ESC>la"
+                        .. m._chars[2]
+                )
             end
         end
     else
         if vim.list_contains(m._firstChars, m._charUnderCursor) then
-            simkeys("%i"..m._chars[2].."<ESC>gv<ESC>a"..m._chars[1])
+            simkeys("%i" .. m._chars[2] .. "<ESC>gv<ESC>a" .. m._chars[1])
         elseif vim.list_contains(m._lastChars, m._charUnderCursor) then
-            simkeys("%a"..m._chars[1].."<ESC>gvl<ESC>i"..m._chars[2])
+            simkeys("%a" .. m._chars[1] .. "<ESC>gvl<ESC>i" .. m._chars[2])
         else
             if vim.list_contains(m._lastChars, m._chars[1]) then
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>a"..m._chars[2].."<ESC>gv<ESC>li"..m._chars[1])
+                simkeys(
+                    ":lua vim.fn.search('"
+                        .. m._regex
+                        .. "', 'b')<CR>a"
+                        .. m._chars[2]
+                        .. "<ESC>gv<ESC>li"
+                        .. m._chars[1]
+                )
             elseif vim.list_contains(m._firstChars, m._chars[1]) or m._backwards == false then
-                simkeys(":lua vim.fn.search('"..m._regex.."')<CR>i"..m._chars[2].."<ESC>gv<ESC>a"..m._chars[1])
+                simkeys(
+                    ":lua vim.fn.search('" .. m._regex .. "')<CR>i" .. m._chars[2] .. "<ESC>gv<ESC>a" .. m._chars[1]
+                )
             else
-                simkeys(":lua vim.fn.search('"..m._regex.."', 'b')<CR>a"..m._chars[1].."<ESC>gv<ESC>li"..m._chars[2])
+                simkeys(
+                    ":lua vim.fn.search('"
+                        .. m._regex
+                        .. "', 'b')<CR>a"
+                        .. m._chars[1]
+                        .. "<ESC>gv<ESC>li"
+                        .. m._chars[2]
+                )
             end
         end
     end
@@ -278,103 +319,106 @@ function m.setup(opts)
     end
 
     if opts.changerKeymap ~= nil then -- {{{
-        vim.keymap.set("n", opts.changerKeymap.."x", function() m.PairChanger() end,
-            {desc="remove % pair", buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.changerKeymap .. "x", function()
+            m.PairChanger()
+        end, { desc = "remove % pair", buffer = bufvalue })
         for i = 1, #firstChars do
-            vim.keymap.set("n", opts.changerKeymap..firstChars[i],
-                function() m.PairChanger{firstChars[i], lastChars[i]} end,
-                {desc="Change pair to "..firstChars[i]..lastChars[i], buffer=bufvalue}
-            )
+            vim.keymap.set("n", opts.changerKeymap .. firstChars[i], function()
+                m.PairChanger { firstChars[i], lastChars[i] }
+            end, { desc = "Change pair to " .. firstChars[i] .. lastChars[i], buffer = bufvalue })
 
-            vim.keymap.set("n", opts.changerKeymap..lastChars[i],
-                function() m.PairChanger({lastChars[i], firstChars[i]}) end,
-                {desc="Change pair to "..firstChars[i]..lastChars[i].." if on last qoute", buffer=bufvalue}
+            vim.keymap.set(
+                "n",
+                opts.changerKeymap .. lastChars[i],
+                function()
+                    m.PairChanger { lastChars[i], firstChars[i] }
+                end,
+                { desc = "Change pair to " .. firstChars[i] .. lastChars[i] .. " if on last qoute", buffer = bufvalue }
             )
-
         end
 
-        vim.keymap.set("n", opts.changerKeymap..'"', function() m.PairChanger{'"'} end,
-            {desc='Change % pair to ""', buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.changerKeymap .. '"', function()
+            m.PairChanger { '"' }
+        end, { desc = 'Change % pair to ""', buffer = bufvalue })
 
-        vim.keymap.set("n", opts.changerKeymap.."'", function() m.PairChanger{"'"} end,
-            {desc="Change % pair to ''", buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.changerKeymap .. "'", function()
+            m.PairChanger { "'" }
+        end, { desc = "Change % pair to ''", buffer = bufvalue })
 
-        vim.keymap.set("n", opts.changerKeymap..'h"', function() m.PairChanger({'"'}, true) end,
-            {desc='Change qoute to "". needs to be on last', buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.changerKeymap .. 'h"', function()
+            m.PairChanger({ '"' }, true)
+        end, { desc = 'Change qoute to "". needs to be on last', buffer = bufvalue })
 
-        vim.keymap.set("n", opts.changerKeymap.."h'", function() m.PairChanger({"'"}, true) end,
-            {desc="Change qoute to ''. needs to be on last", buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.changerKeymap .. "h'", function()
+            m.PairChanger({ "'" }, true)
+        end, { desc = "Change qoute to ''. needs to be on last", buffer = bufvalue })
 
-        vim.keymap.set("n", opts.changerKeymap.."hx", function() m.PairChanger(nil, true) end,
-            {desc="Deletes a qoute. needs to be on last", buffer=bufvalue}
-        )
-
+        vim.keymap.set("n", opts.changerKeymap .. "hx", function()
+            m.PairChanger(nil, true)
+        end, { desc = "Deletes a qoute. needs to be on last", buffer = bufvalue })
     end --}}}
 
     if opts.inserterKeymap ~= nil then --{{{
         for i = 1, #firstChars do
+            vim.keymap.set("n", opts.inserterKeymap .. "a" .. firstChars[i], function()
+                m.PairInserter({ firstChars[i], lastChars[i] }, "a")
+            end, { desc = "Put " .. firstChars[i] .. lastChars[i] .. " around pair", buffer = bufvalue })
 
-            vim.keymap.set("n", opts.inserterKeymap.."a"..firstChars[i],
-                function() m.PairInserter({firstChars[i], lastChars[i]}, "a") end,
-                {desc="Put "..firstChars[i]..lastChars[i].." around pair", buffer=bufvalue}
+            vim.keymap.set(
+                "n",
+                opts.inserterKeymap .. "a" .. lastChars[i],
+                function()
+                    m.PairInserter({ lastChars[i], firstChars[i] }, "a")
+                end,
+                { desc = "Put " .. firstChars[i] .. lastChars[i] .. " around pair if on last qoute", buffer = bufvalue }
             )
 
-            vim.keymap.set("n", opts.inserterKeymap.."a"..lastChars[i],
-                function() m.PairInserter({lastChars[i], firstChars[i]}, "a") end,
-                {desc="Put "..firstChars[i]..lastChars[i].." around pair if on last qoute", buffer=bufvalue}
-            )
+            vim.keymap.set("n", opts.inserterKeymap .. "i" .. firstChars[i], function()
+                m.PairInserter({ firstChars[i], lastChars[i] }, "i")
+            end, { desc = "Put " .. firstChars[i] .. lastChars[i] .. " inside pair", buffer = bufvalue })
 
-            vim.keymap.set("n", opts.inserterKeymap.."i"..firstChars[i],
-                function() m.PairInserter({firstChars[i], lastChars[i]}, "i") end,
-                {desc="Put "..firstChars[i]..lastChars[i].." inside pair", buffer=bufvalue}
+            vim.keymap.set(
+                "n",
+                opts.inserterKeymap .. "i" .. lastChars[i],
+                function()
+                    m.PairInserter({ lastChars[i], firstChars[i] }, "i")
+                end,
+                { desc = "Put " .. firstChars[i] .. lastChars[i] .. " inside pair if on last qoute", buffer = bufvalue }
             )
-
-            vim.keymap.set("n", opts.inserterKeymap.."i"..lastChars[i],
-                function() m.PairInserter({lastChars[i], firstChars[i]}, "i") end,
-                {desc="Put "..firstChars[i]..lastChars[i].." inside pair if on last qoute", buffer=bufvalue}
-            )
-
         end
 
-        vim.keymap.set("n", opts.inserterKeymap..'a"', function() m.PairInserter({'"'}, "a") end,
-            {desc='Put "" around % pair', buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. 'a"', function()
+            m.PairInserter({ '"' }, "a")
+        end, { desc = 'Put "" around % pair', buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap.."a'", function() m.PairInserter({"'"}, "a") end,
-            {desc="Put '' around % pair", buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. "a'", function()
+            m.PairInserter({ "'" }, "a")
+        end, { desc = "Put '' around % pair", buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap..'ah"', function() m.PairInserter({'"'}, "a", true) end,
-            {desc='Put "" around pair if on last qoute', buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. 'ah"', function()
+            m.PairInserter({ '"' }, "a", true)
+        end, { desc = 'Put "" around pair if on last qoute', buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap.."ah'", function() m.PairInserter({"'"}, "a", true) end,
-            {desc="Put '' around pair if on last qoute", buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. "ah'", function()
+            m.PairInserter({ "'" }, "a", true)
+        end, { desc = "Put '' around pair if on last qoute", buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap..'i"', function() m.PairInserter({'"'}, "i") end,
-            {desc='Put "" inside pair', buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. 'i"', function()
+            m.PairInserter({ '"' }, "i")
+        end, { desc = 'Put "" inside pair', buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap.."i'", function() m.PairInserter({"'"}, "i") end,
-            {desc="Put '' inside pair", buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. "i'", function()
+            m.PairInserter({ "'" }, "i")
+        end, { desc = "Put '' inside pair", buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap..'ih"', function() m.PairInserter({'"'}, "i", true) end,
-            {desc='Put "" inside pair if on last qoute', buffer=bufvalue}
-        )
+        vim.keymap.set("n", opts.inserterKeymap .. 'ih"', function()
+            m.PairInserter({ '"' }, "i", true)
+        end, { desc = 'Put "" inside pair if on last qoute', buffer = bufvalue })
 
-        vim.keymap.set("n", opts.inserterKeymap.."ih'", function() m.PairInserter({"'"}, "i", true) end,
-            {desc="Put '' inside pair if on last qoute", buffer=bufvalue}
-        )
-
+        vim.keymap.set("n", opts.inserterKeymap .. "ih'", function()
+            m.PairInserter({ "'" }, "i", true)
+        end, { desc = "Put '' inside pair if on last qoute", buffer = bufvalue })
     end --}}}
-
 end -- }}}
 
 return m
