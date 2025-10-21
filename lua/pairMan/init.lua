@@ -78,11 +78,11 @@ local function initPairManupulation(chars, backwards)
 
     ---@nodocs docs{{{
     ---### this is a shared value to make debugging easier, and the init for each function short.
-    - -- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
-    - -- `\"`
-    - -- each `\` needs to be doubled. because it's value gets passed to a string.
-    - -- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
-    - -- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
+    --- regex that's used for finding the char, \ ignored, that means if you're trying to find a `"` it will ignore
+    --- `\"`
+    --- each `\` needs to be doubled. because it's value gets passed to a string.
+    --- so a `\` becomes `\\` in this string, but when it's value get's passed to another string, it becomes `\` again.
+    --- solution? double the `\\` to `\\\\` so it becomes a `\\` in the end.
     ---@nodocs docs}}}
     m._regex = "\\\\%(\\\\\\\\\\\\)\\\\@<!" .. m._charUnderCursor
 
